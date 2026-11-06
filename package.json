@@ -1,0 +1,30 @@
+{
+  "name": "kurtkoelln-playwright-suite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright + TypeScript storefront E2E tests for a Shopware 6 shop (staging), built on the shared Shopware suite skeleton",
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:regression": "playwright test --grep-invert @mobile",
+    "test:readonly": "ALLOW_WRITE_TESTS=false playwright test",
+    "test:messages": "SEND_MESSAGES=true playwright test --grep @sends-message --project=chromium",
+    "test:mobile": "playwright test --project=mobile",
+    "test:client": "playwright test tests/client",
+    "test:headed": "playwright test --headed --project=chromium",
+    "test:ui": "playwright test --ui",
+    "test:list": "playwright test --list",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit",
+    "install:browsers": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.10.0",
+    "dotenv": "^17.2.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
