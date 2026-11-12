@@ -5,7 +5,7 @@ import type { FullConfig, FullResult, Reporter, Suite, TestCase } from '@playwri
 /**
  * Writes a short run summary (every test with its status) next to the full HTML report:
  *   run-summary/<project>_<date>_<time>.md / .html / .json
- * In GitHub Actions the Markdown is also added to the run's summary page.
+ * In GitHub Actions the Markdown is also added to the run's summary page; Bitbucket Pipelines gets it in the log.
  * The .json files feed scripts/combine-run-summaries.ts (one report for all shops).
  *
  * The files get shared with people outside the repo, so they carry no environment details:
@@ -80,7 +80,7 @@ export default class RunSummaryReporter implements Reporter {
         durationMs: result.duration,
         overall: result.status,
         trigger: describeTrigger(),
-        runUrl: githubRunUrl(),
+        runUrl: ciRunUrl(),
       },
       rows,
     };
@@ -93,6 +93,8 @@ export default class RunSummaryReporter implements Reporter {
     fs.writeFileSync(`${base}.json`, JSON.stringify(summary, null, 2));
 
     if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
+    // Bitbucket has no summary page: the Markdown goes to the step log instead
+    if (process.env.BITBUCKET_BUILD_NUMBER) console.log(md);
     console.log(`Run summary: ${base}.html\nStatus message: ${toTeamsLine(summary)}`);
   }
 
@@ -139,6 +141,7 @@ function redact(s: string): string {
 }
 
 function describeTrigger(): string {
+  if (process.env.BITBUCKET_BUILD_NUMBER) return describeBitbucketTrigger();
   if (!process.env.GITHUB_ACTIONS) return 'local run';
   const event = process.env.GITHUB_EVENT_NAME ?? '';
   const labels: Record<string, string> = {
@@ -150,10 +153,26 @@ function describeTrigger(): string {
   return labels[event] ?? `CI run (${event})`;
 }
 
-function githubRunUrl(): string | undefined {
+// Bitbucket exposes no trigger type: the pipeline file sets CI_TRIGGER per pipeline (push, custom)
+function describeBitbucketTrigger(): string {
+  if (process.env.BITBUCKET_PR_ID) return 'CI run (pull request, @smoke only)';
+  const labels: Record<string, string> = {
+    push: `CI run (push to ${process.env.BITBUCKET_BRANCH ?? 'branch'})`,
+    custom: 'CI run (scheduled or started manually)',
+  };
+  return labels[process.env.CI_TRIGGER ?? ''] ?? 'CI run';
+}
+
+function ciRunUrl(): string | undefined {
   const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
-  if (!GITHUB_SERVER_URL || !GITHUB_REPOSITORY || !GITHUB_RUN_ID) return undefined;
-  return `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
+  if (GITHUB_SERVER_URL && GITHUB_REPOSITORY && GITHUB_RUN_ID) {
+    return `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
+  }
+  const { BITBUCKET_WORKSPACE, BITBUCKET_REPO_SLUG, BITBUCKET_BUILD_NUMBER } = process.env;
+  if (BITBUCKET_WORKSPACE && BITBUCKET_REPO_SLUG && BITBUCKET_BUILD_NUMBER) {
+    return `https://bitbucket.org/${BITBUCKET_WORKSPACE}/${BITBUCKET_REPO_SLUG}/pipelines/results/${BITBUCKET_BUILD_NUMBER}`;
+  }
+  return undefined;
 }
 
 // display name e.g. "My Shop (staging)" → "my-shop-staging"

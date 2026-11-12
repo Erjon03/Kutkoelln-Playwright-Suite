@@ -2,7 +2,7 @@
 
 **Playwright + TypeScript** end-to-end tests for a Shopware 6 storefront, built on the shared Shopware suite
 skeleton. Shop specifics live in **one profile file** (`projects/<name>.ts`); everything environment-specific or
-sensitive (URL, credentials, coupon codes) comes from `.env` locally and from GitHub Actions variables/secrets in CI.
+sensitive (URL, credentials, coupon codes) comes from `.env` locally and from Bitbucket repository variables in CI.
 Nothing in this repository can be used against the shop on its own.
 
 ---
@@ -178,15 +178,25 @@ its id/secret. Without Admin API credentials, test customers are registered thro
 
 ---
 
-## CI (GitHub Actions)
+## CI (Bitbucket Pipelines)
 
-`.github/workflows/playwright.yml` runs smoke tests on pull requests and the full suite on pushes to `main`,
-nightly and on demand. `@sends-message` tests never run in CI. The storefront URL and all credentials come
-from repository variables/secrets (*Settings → Secrets and variables → Actions*).
+`bitbucket-pipelines.yml` runs the suite in 2 parallel shards:
+
+| Pipeline | Runs |
+|---|---|
+| pull requests | `@smoke` only |
+| push to `main` | full suite |
+| custom `full-regression` | full suite (optional `GREP` variable); scheduled under *Pipelines → Schedules* |
+
+`@sends-message` tests never run in CI. The storefront URL and all credentials come from repository variables
+(*Repository settings → Repository variables*, every credential marked **Secured**), using the same names as `.env`.
+`scripts/ci/run-shard.sh` runs one shard; `scripts/ci/merge-reports.sh` merges the shards into one HTML + JUnit
+report and run summary and fails the pipeline if any test failed. Reports are on the run's *Artifacts* tab,
+test results on its *Tests* tab. Keep the image tag in `bitbucket-pipelines.yml` in sync with `@playwright/test`.
 
 ### Run summary
 
 Every local run writes `run-summary/<project>_<date>_<time>.html` / `.md` / `.json` (git-ignored): totals and every
 test with status, browser, duration and the first error line. URLs in error messages are replaced by `<url>`, so the
 summary can be forwarded as is. A one-line status message (e.g. for Teams) is printed after each run.
-In CI the summary is shown on the run's summary page and uploaded as an artifact.
+In CI the summary is printed in the merge step's log and kept as an artifact.

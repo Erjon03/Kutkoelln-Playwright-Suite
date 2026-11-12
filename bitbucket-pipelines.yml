@@ -1,0 +1,78 @@
+# Storefront E2E in Bitbucket Pipelines.
+# Environment details come only from repository variables (Repository settings > Repository variables),
+# never from the code. Schedules are set in the UI (Pipelines > Schedules), not here.
+#
+#   pull requests     -> @smoke, 2 shards
+#   push to main      -> full suite, 2 shards
+#   full-regression   -> custom pipeline: full suite (schedule this one), optional GREP
+#
+# Keep the image tag in sync with @playwright/test in package.json.
+image: mcr.microsoft.com/playwright:v1.63.0-noble
+
+definitions:
+  caches:
+    npm: ~/.npm
+  steps:
+    - step: &shard
+        name: E2E shard
+        max-time: 60
+        caches:
+          - npm
+        script:
+          - export PROJECT=kurtkoelln
+          - npm ci
+          - bash scripts/ci/run-shard.sh
+        artifacts:
+          - blob-report/**
+          - ci-status/**
+    - step: &merge
+        name: Merge reports
+        max-time: 15
+        caches:
+          - npm
+        script:
+          - export PROJECT=kurtkoelln
+          - npm ci
+          - bash scripts/ci/merge-reports.sh
+        artifacts:
+          - playwright-report/**
+          - run-summary/**
+          - test-reports/**
+
+pipelines:
+  pull-requests:
+    '**':
+      - parallel: &shards
+          fail-fast: false
+          steps:
+            - step:
+                <<: *shard
+                name: E2E shard 1/2
+            - step:
+                <<: *shard
+                name: E2E shard 2/2
+      - step: *merge
+
+  branches:
+    main:
+      - parallel: *shards
+      - step:
+          <<: *merge
+          script:
+            - export PROJECT=kurtkoelln CI_TRIGGER=push
+            - npm ci
+            - bash scripts/ci/merge-reports.sh
+
+  custom:
+    full-regression:
+      - variables:
+          - name: GREP
+            default: ''
+            description: 'Only run tests matching (e.g. @smoke). Empty = full suite.'
+      - parallel: *shards
+      - step:
+          <<: *merge
+          script:
+            - export PROJECT=kurtkoelln CI_TRIGGER=custom
+            - npm ci
+            - bash scripts/ci/merge-reports.sh
