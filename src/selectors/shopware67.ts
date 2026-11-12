@@ -292,7 +292,8 @@ export const shopware67Selectors = {
   wishlist: {
     page: '.cms-listing-row, .wishlist-listing',
     productBox: '.product-box',
-    remove: '.product-wishlist-remove, .product-wishlist-action',
+    // 6.6 core: <div class="product-wishlist-remove"><form><button class="product-wishlist-btn-remove">
+    remove: '.product-wishlist-btn-remove, .product-wishlist-remove, .product-wishlist-action',
   },
 };
 

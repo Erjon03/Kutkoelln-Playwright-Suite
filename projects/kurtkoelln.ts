@@ -124,8 +124,9 @@ const config: ProjectConfig = {
     blockUrls: [
       /googletagmanager\.com|google-analytics\.com|analytics\.google\.com|googlesyndication\.com|doubleclick\.net|googleadservices\.com/,
       /klaviyo\.com/,
-      // first-party tag manager proxy: random path + base64 payload parameter
-      /\/[a-z0-9]{12,}(\/[a-z0-9]+)?\?[a-z0-9]{6,}=/,
+      // first-party tag manager proxy: one short random segment right after the host + base64 payload parameter
+      // (anchored: must not match shop routes like /detail/<id>/switch?options=)
+      /^https?:\/\/[^/]+\/[a-z0-9]{10,16}(\/[a-z0-9]{3,8})?\?[a-z0-9]{6,10}=/,
       /\/widgets\/cbax\/analytics\//,
     ],
   },

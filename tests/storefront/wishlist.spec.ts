@@ -20,7 +20,9 @@ test.describe('Wishlist', () => {
     await page.goto(cfg.routes.wishlist);
     const box = page.locator(cfg.selectors.wishlist.productBox).filter({ hasText: cfg.testData.simpleProduct.name });
     await expect(box).toBeVisible();
-    await box.locator(cfg.selectors.wishlist.remove).first().click();
+    // some themes show the remove button only on hover; click the visible one (wrappers can be zero-size)
+    await box.hover();
+    await box.locator(cfg.selectors.wishlist.remove).locator('visible=true').first().click();
     await expect(box).toHaveCount(0);
   });
 
